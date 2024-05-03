@@ -44,15 +44,17 @@ class Compressor
     /** Compress the audio input signal, saves the calculated gain
         \param in audio input signal
     */
-    float Process(float in);
+    float Process(float in, char CalcoloComp);
 
     /** Compresses the audio input signal, keyed by a secondary input.
         \param in audio input signal (to be compressed)
         \param key audio input that will be used to side-chain the compressor
     */
-    float Process(float in, float key)
+    //float Process(float in, float key)
+    float Process(float in, float key, char CalcoloComp)
     {
-        Process(key);
+        //Process(key);
+        Process(key, CalcoloComp);
         return Apply(in);
     }
 
@@ -161,11 +163,19 @@ class Compressor
     /** Gets the gain reduction in dB
     */
     float GetGain() { return fastlog10f(gain_) * 20.0f; }
+    /** Gets the gain reduction in senza conversione in dB che faremo solo sul display
+    */
+    //float GetGainnodB() { return gain_;	}
+    
+    //ho tolto alche il moltiplicatore makeup, così la visualizzazione del gain reduction non ne tiene conto
+    float GetGainnodB() { return gain_rec_; }
+
 
   private:
     float ratio_, thresh_, atk_, rel_;
     float makeup_gain_;
     float gain_;
+    
 
     // Recorded slope and gain, used in next sample
     float slope_rec_, gain_rec_;

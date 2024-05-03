@@ -1,6 +1,6 @@
 // # compressor
 //
-// Author: shensley, AvAars
+// Ottimizata da luca,alcuni calcoli vengono effettuati ogni 4 cicli.
 //
 
 #include <cmath>
@@ -20,6 +20,7 @@ using namespace daisysp;
 
 void Compressor::Init(float sample_rate)
 {
+    //sample_rate_      = min(192000, max(1, sample_rate/4));//ho Diviso per 4 per compensare la divisone per 4 nei calcoli e testando i tempi di attacco si trovano
     sample_rate_      = min(192000, max(1, sample_rate));
     sample_rate_inv_  = 1.0f / (float)sample_rate_;
     sample_rate_inv2_ = 2.0f / (float)sample_rate_;
@@ -36,24 +37,31 @@ void Compressor::Init(float sample_rate)
     slope_rec_ = 0.1f;
 }
 
-float Compressor::Process(float in)
+//float Compressor::Process(float in)
+float Compressor::Process(float in, char CalcoloComp)
 {
     float inAbs   = fabsf(in);
     float cur_slo = ((slope_rec_ > inAbs) ? rel_slo_ : atk_slo_);
     slope_rec_    = ((slope_rec_ * cur_slo) + ((1.0f - cur_slo) * inAbs));
-    gain_rec_     = ((atk_slo2_ * gain_rec_)
-                 + (ratio_mul_
-                    * fmax(((20.f * fastlog10f(slope_rec_)) - thresh_), 0.f)));
-    gain_         = pow10f(0.05f * (gain_rec_ + makeup_gain_));
-
+    
+    //if (CicliCalcCompressor == 3){ // aggiunta questa variabile per far questo calcolo ogni 4 volte
+    if (CalcoloComp == 1) {	// aggiunta questa variabile per far questo calcolo un canale alla volta - ogni giro il calcolo viene fatto su un singolo canale
+        gain_rec_     = ((atk_slo2_ * gain_rec_)
+                    + (ratio_mul_
+                        * fmax(((20.f * fastlog10f(slope_rec_)) - thresh_), 0.f)));
+        gain_         = pow10f(0.05f * (gain_rec_ + makeup_gain_));
+        //CicliCalcCompressor = 0;
+    }
+    //CicliCalcCompressor ++;
     return gain_ * in;
 }
 
 void Compressor::ProcessBlock(float *in, float *out, float *key, size_t size)
 {
+    char LocalCalcoloComp = 1;	// aggiunta variabile locale sempre attiva per attivare sempre la funzione all'interno di Process
     for(size_t i = 0; i < size; i++)
     {
-        Process(key[i]);
+        Process(key[i], LocalCalcoloComp);
         out[i] = Apply(in[i]);
     }
 }
@@ -65,9 +73,10 @@ void Compressor::ProcessBlock(float **in,
                               size_t  channels,
                               size_t  size)
 {
+    char LocalCalcoloComp = 1;	// aggiunta variabile locale sempre attiva per attivare sempre la funzione all'interno di Process    
     for(size_t i = 0; i < size; i++)
     {
-        Process(key[i]);
+        Process(key[i], LocalCalcoloComp);
         for(size_t c = 0; c < channels; c++)
         {
             out[c][i] = Apply(in[c][i]);
